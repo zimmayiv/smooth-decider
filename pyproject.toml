@@ -23,7 +23,7 @@ point = ["peft>=0.13", "tfrecord", "protobuf"]
 
 [project.urls]
 Upstream = "https://github.com/Mapika/decider"
-Repository = "https://github.com/Mapika/decider"
+Repository = "https://github.com/zimmayiv/smooth-decider"
 Weights = "https://huggingface.co/Mapika/decider-2b"
 Changelog = "https://github.com/Mapika/decider/blob/main/docs/CHANGELOG.md"
 
