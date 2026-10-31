@@ -1,3 +1,16 @@
+# smooth-decider
+
+**A fork of [Mapika/decider](https://github.com/Mapika/decider) that adds `Point` answers:** a
+coordinate in a declared frame (pixels, metres, tiles, normalized), predicted in the same single
+forward pass as decider's typed decisions, as a calibrated mixture of Gaussians. Fine-tuned from
+decider-4b with a LoRA on non-game data (synthetic geometry, StatsBomb, SkillCorner, AndroidControl),
+it lands taps about 35 px off on a 1080 x 2400 phone screen and passes within 2 yards of a named teammate, while
+decider's own Choice accuracy is unchanged. Design, results and limits: [docs/POINT.md](docs/POINT.md).
+
+Everything below is upstream decider's README, unchanged.
+
+---
+
 # decider: one-pass typed decisions with calibrated probabilities
 
 [![tests](https://github.com/Mapika/decider/actions/workflows/tests.yml/badge.svg)](https://github.com/Mapika/decider/actions/workflows/tests.yml)
