@@ -148,3 +148,29 @@ def test_point_decider_returns_points_in_the_declared_frame(tmp_path):
     for o in out:
         assert o["type"] == "point" and -60 <= o["x"] <= 60 and -900 <= o["y"] <= 9100
         assert o["radius90"] > 0 and abs(sum(c["weight"] for c in o["components"]) - 1) < 0.1
+
+
+def test_conv_patch_and_shared_prefix_on_grouped_sweep(model):
+    """decider's fused causal conv gives the same answers as transformers' fallback, and shared-prefix answers
+    still equal independent rows on a grouped, compact sweep (compact questions included)."""
+    from transformers.models.qwen3_5 import modeling_qwen3_5 as mq
+    from decider.engine import patch_conv
+    from decider.data.bw_bench import make_grouped_sweep
+    from decider.point_latency import Runner, check_equivalence
+
+    sw = make_grouped_sweep("early", group_size=1, macro=True)
+    R = Runner(model)
+    static, dynamic, qs = R.sweep_ids(sw)
+    ctx = static + dynamic
+    with torch.no_grad():
+        before = R.packed(ctx, sw.questions)[0]
+        orig = mq.causal_conv1d_fn
+        patch_conv()
+        try:
+            after = R.packed(ctx, sw.questions)[0]
+            eq = check_equivalence(R, sw, n=6, atol=1e-4)
+        finally:
+            mq.causal_conv1d_fn = orig
+    assert torch.allclose(before["choice"][1], after["choice"][1], atol=1e-5)
+    assert torch.allclose(before["point"][1]["mu"], after["point"][1]["mu"], atol=1e-5)
+    assert eq["ok"], eq

@@ -74,7 +74,10 @@ MLP projection (decider's own stage recipe for this model; a full fine-tune of
    came from choosing the wrong corner, side or range), so 33k more rows of them.
 3. **Rebalanced continuation**: the original mix at natural shares plus some
    hard geometry, which recovers the real-data tasks the continuation had
-   under-replayed. This is the released recipe's final stage.
+   under-replayed. This is the released recipe's final stage on `main`.
+4. **Packed continuation** (branch `bw-smooth-decider`): crowded scenes with up to 40 questions
+   packed in one row (`decider/data/crowded.py`); packed answers then equal independent ones.
+   Results in [BW.md](BW.md).
 
 ## Results (held-out rows, final checkpoint vs base decider-4b)
 

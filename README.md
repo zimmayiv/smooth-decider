@@ -7,6 +7,11 @@ decider-4b with a LoRA on non-game data (synthetic geometry, StatsBomb, SkillCor
 it lands taps about 35 px off on a 1080 x 2400 phone screen and passes within 2 yards of a named teammate, while
 decider's own Choice accuracy is unchanged. Design, results and limits: [docs/POINT.md](docs/POINT.md).
 
+**Branch `bw-smooth-decider`** adds serving a Brood War agent's per-sweep questions under a frame budget:
+a latency benchmark with grouped and mixed-granularity sweep layouts, a packed-vs-independent answer test,
+and a fourth training stage on crowded multi-question scenes that removes the packing penalty for
+Point answers. See [docs/BW.md](docs/BW.md).
+
 Everything below is upstream decider's README, unchanged.
 
 ---

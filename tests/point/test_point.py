@@ -87,3 +87,20 @@ def test_collate_mixes_choice_and_point_rows():
     assert b["slot_batch"].tolist() == [0] and b["golds"].tolist() == [1]
     assert b["point_slot_batch"].tolist() == [1, 1] and b["point_slot_idx"].tolist() == [2, 4]
     assert torch.allclose(b["point_targets"], torch.tensor([[0.1, 0.2], [0.3, 0.4]]))
+
+
+def test_fork_cache_repeats_every_layer_type():
+    from pathlib import Path
+    import pytest
+    tiny = Path(__file__).resolve().parents[2] / ".cache" / "tiny_decider"
+    if not tiny.exists():
+        pytest.skip("tiny decider checkpoint not built")
+    from decider.point_latency import _tensors, fork_cache
+    from decider.point_model import PointModel
+    m = PointModel(str(tiny), dtype=torch.float32, grad_ckpt=False).eval()
+    with torch.no_grad():
+        c = m.backbone()(input_ids=torch.randint(0, 1000, (1, 9)), use_cache=True).past_key_values
+    f = fork_cache(c, 5)
+    assert all(t.shape[0] == 5 for t in _tensors(f)) and all(t.shape[0] == 1 for t in _tensors(c))
+    kinds = {type(L).__name__ for L in f.layers}
+    assert {"LinearAttentionLayer", "DynamicLayer"} <= kinds

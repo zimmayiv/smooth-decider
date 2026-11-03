@@ -48,6 +48,7 @@ class PointQ:
     text: str
     frame: Frame
     target: tuple | None = None  # (x, y) in frame units; None at inference
+    frame_ref: str | None = None  # compact prompts: name a frame stated once in the context instead of describing it
 
 
 @dataclass
@@ -56,6 +57,7 @@ class ChoiceQ:
     text: str
     options: list
     gold: int = 0
+    ref: str | None = None  # compact prompts: name an option list stated once in the context instead of listing it
 
 
 @dataclass
@@ -66,27 +68,36 @@ class PointExample:
     meta: dict = field(default_factory=dict)
 
 
+def question_piece(q, n: str = "") -> str:
+    """Prompt text of one question (n = " 2" etc. in multi-question rows); its last token is the answer slot."""
+    from decider.prompt import LETTERS, NARROW
+
+    if isinstance(q, ChoiceQ):
+        if len(q.options) > NARROW:
+            raise ValueError(f"mixed rows support up to {NARROW} options, got {len(q.options)}")
+        if q.ref is not None:
+            return f"\n\nQuestion{n}: {q.text}\nOptions: {q.ref} (A-{LETTERS[len(q.options) - 1]})\nAnswer{n}: ("
+        return (f"\n\nQuestion{n}: {q.text}\nOptions:" + "".join(f"\n({LETTERS[j]}) {o}" for j, o in enumerate(q.options))
+                + f"\nAnswer{n}: (")
+    frame = q.frame_ref if q.frame_ref is not None else q.frame.describe()
+    return f"\n\nQuestion{n}: {q.text}\nCoordinate frame: {frame}.\nAnswer{n} as a point: ("
+
+
+def context_ids(context: str, tok, max_ctx_tokens: int = 4096) -> list:
+    return tok.encode("Context:\n" + context, add_special_tokens=False)[:max_ctx_tokens]
+
+
 def build_point(example: PointExample, tok, max_ctx_tokens: int = 4096) -> dict:
     """Token ids and answer slots for a row of Point (and optionally Choice) questions, in decider's plain
     state-first layout. Choice questions use decider's own option format, in the given option order."""
-    from decider.prompt import LETTERS, NARROW
-
-    ids = tok.encode("Context:\n" + example.context, add_special_tokens=False)[:max_ctx_tokens]
+    ids = context_ids(example.context, tok, max_ctx_tokens)
     slots, golds, nopts, p_slots, targets, frames = [], [], [], [], [], []
     multi = len(example.qs) > 1
     for k, q in enumerate(example.qs):
-        n = f" {k + 1}" if multi else ""
+        ids = ids + tok.encode(question_piece(q, f" {k + 1}" if multi else ""), add_special_tokens=False)
         if isinstance(q, ChoiceQ):
-            if len(q.options) > NARROW:
-                raise ValueError(f"mixed rows support up to {NARROW} options, got {len(q.options)}")
-            piece = (f"\n\nQuestion{n}: {q.text}\nOptions:" + "".join(f"\n({LETTERS[j]}) {o}" for j, o in enumerate(q.options))
-                     + f"\nAnswer{n}: (")
-            ids = ids + tok.encode(piece, add_special_tokens=False)
             slots.append(len(ids) - 1); golds.append(q.gold); nopts.append(len(q.options))
         else:
-            piece = (f"\n\nQuestion{n}: {q.text}\nCoordinate frame: {q.frame.describe()}."
-                     f"\nAnswer{n} as a point: (")
-            ids = ids + tok.encode(piece, add_special_tokens=False)
             p_slots.append(len(ids) - 1)
             targets.append(q.frame.normalize(*q.target) if q.target is not None else (float("nan"), float("nan")))
             frames.append(q.frame)

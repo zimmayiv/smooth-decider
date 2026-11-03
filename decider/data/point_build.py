@@ -28,16 +28,18 @@ from decider.point import ChoiceQ, Frame, PointExample, PointQ
 def to_json(e: PointExample) -> dict:
     def q_json(q):
         if isinstance(q, ChoiceQ):
-            return {"type": "choice", "text": q.text, "options": list(q.options), "gold": q.gold}
-        return {"text": q.text, "frame": vars(q.frame), "target": list(q.target)}
+            d = {"type": "choice", "text": q.text, "options": list(q.options), "gold": q.gold}
+            return {**d, "ref": q.ref} if q.ref else d
+        d = {"text": q.text, "frame": vars(q.frame), "target": list(q.target)}
+        return {**d, "frame_ref": q.frame_ref} if q.frame_ref else d
     return {"context": e.context, "task": e.task, "meta": e.meta, "qs": [q_json(q) for q in e.qs]}
 
 
 def from_json(d: dict) -> PointExample:
     def q_obj(q):
         if q.get("type") == "choice":
-            return ChoiceQ(q["text"], q["options"], q["gold"])
-        return PointQ(q["text"], Frame(**q["frame"]), tuple(q["target"]))
+            return ChoiceQ(q["text"], q["options"], q["gold"], ref=q.get("ref"))
+        return PointQ(q["text"], Frame(**q["frame"]), tuple(q["target"]), frame_ref=q.get("frame_ref"))
     return PointExample(d["context"], [q_obj(q) for q in d["qs"]], d["task"], d.get("meta", {}))
 
 
